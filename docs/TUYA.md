@@ -36,7 +36,6 @@ Os serviços, SQLite, relatórios e ML dependem do contrato normalizado, não de
 Tuya. `resume_simulator` restaura exclusivamente o estado sintético; um adaptador
 real recebe o contador do próprio medidor.
 
-Ao migrar, usar uma base separada, atualizar a identificação da origem no dashboard
-e nos relatórios e realizar validação com medições reais. O texto de simulação da
-interface é proposital e não deve ser removido enquanto a origem continuar sintética.
-O modelo sintético não deve ser reaproveitado como modelo validado para o local real.
+Ao migrar, usar uma base separada e realizar validação com medições reais. O modelo
+treinado com dados simulados não deve ser reaproveitado como modelo validado para o
+local real: treine novamente com o histórico dos dispositivos físicos.

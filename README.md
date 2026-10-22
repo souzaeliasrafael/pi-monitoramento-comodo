@@ -1,33 +1,48 @@
-# Sistema IoT em Nuvem para Monitoramento de Ambiente e Predição de Consumo Energético em Estoque Comercial
+# Sistema IoT para Monitoramento de Ambiente e Predição de Consumo Energético
 
-Projeto Integrador universitário em Python: três termo-higrômetros e um medidor
-elétrico simulados, histórico SQLite, análises, alertas, relatório semanal e
-previsão de consumo em um dashboard Streamlit.
+Projeto Integrador universitário em Python. O sistema acompanha um cômodo pequeno em
+Mauá/SP com **três termo-higrômetros** (temperatura e umidade) e **um disjuntor
+inteligente** que mede o circuito de quatro lâmpadas LED de 15 W. As leituras são
+gravadas em SQLite, analisadas, comparadas com limites de alerta e usadas para prever
+o consumo de energia dos próximos dias com machine learning. Tudo é apresentado em um
+painel web feito com Streamlit.
 
-**Cenário atual:** cômodo residencial pequeno em Mauá/SP, com somente quatro
-lâmpadas LED de 15 W acompanhadas por um disjuntor inteligente, com uso dinâmico. O perfil elétrico comercial foi
-substituído por essa iluminação; temperatura e umidade mantêm o perfil de Mauá.
-As três posições de sensores permanecem para comparação ambiental.
+**Origem dos dados:** nesta versão os dispositivos são simulados por software. O
+simulador gera leituras realistas (clima de Mauá, rotina de uso das lâmpadas, eventos
+anormais) no mesmo formato que um dispositivo real entregaria. A arquitetura já separa
+a fonte de dados do resto do sistema, para que a troca por dispositivos Tuya reais
+exija apenas um novo adaptador (veja [docs/TUYA.md](docs/TUYA.md)).
 
-**Todos os dados são simulados.** Não há dispositivos físicos, credenciais reais,
-chamadas à Tuya nem serviços pagos. O nome descreve a proposta acadêmica; esta
-implementação executa localmente, preparada para uma fonte remota futura. Não
-houve implantação em nuvem. Modelos sintéticos não estão validados para prever
-consumo real do estabelecimento.
+## Sumário
 
-## Requisitos
+- [O que o painel mostra](#o-que-o-painel-mostra)
+- [Como rodar no computador](#como-rodar-no-computador)
+- [Publicação no Railway](#publicação-no-railway)
+- [Configuração](#configuração)
+- [Arquitetura](#arquitetura)
+- [Como funciona](#como-funciona)
+- [Testes e solução de problemas](#testes-e-solução-de-problemas)
+- [Limitações](#limitações)
 
-Python 3.12+, pip e venv. Ambiente validado: Windows com Python 3.14. Internet é
-necessária apenas para instalar os pacotes; execução e testes são locais. SQLite
-já vem com o Python. Execute os comandos na pasta deste README.
+## O que o painel mostra
 
-Bibliotecas: SQLAlchemy, python-dotenv, pandas, NumPy, Plotly, Streamlit,
-scikit-learn, joblib, tzdata e pytest. Os gráficos usam Plotly; Matplotlib não é
-necessário. PDF automático não foi incluído; o HTML pode ser impresso no navegador.
+O menu lateral tem seis telas. Um único filtro de datas e dispositivo vale para todas.
 
-## Instalação e apresentação rápida
+| Tela | Conteúdo |
+| --- | --- |
+| Resumo executivo | Indicadores medidos (temperatura, umidade, consumo, potência, tensão, corrente, alertas), previsões e custos, erros do modelo e potência instalada |
+| Ambiente e histórico | Gráfico de temperatura, umidade ou potência por sensor e estatísticas do período |
+| Energia | Consumo diário e potência do circuito |
+| Alertas | Ocorrências fora dos limites, com nível Atenção ou Crítico |
+| Previsão energética | Previsão diária com faixa de erro, comparação com o consumo medido e geração de relatório HTML |
+| Equipamentos | Cadastro de novas cargas no circuito (nome, quantidade e potência) |
 
-PowerShell, sem ativar o ambiente virtual:
+## Como rodar no computador
+
+Requisitos: Python 3.12 ou superior, pip e venv. Internet só é necessária para instalar
+os pacotes. Execute os comandos na pasta deste README.
+
+### Instalação e demonstração rápida (PowerShell)
 
 ```powershell
 python -m venv .venv
@@ -37,42 +52,43 @@ Copy-Item .env.example .env
 .\.venv\Scripts\python.exe -m streamlit run app/dashboard/app.py
 ```
 
-Abra [o dashboard local](http://localhost:8501). Ctrl+C encerra o processo. Se já
-houver `.env`, preserve-o em vez de copiar novamente.
+Abra http://localhost:8501. Ctrl+C encerra. Linux/macOS: use `python3 -m venv .venv`,
+`.venv/bin/python` nos comandos e `cp .env.example .env`.
 
-**setup_demo.py recria as tabelas de leituras e alertas. Pare o coletor antes.**
-Se o banco contiver dados, cria primeiro uma cópia SQLite consistente em
-`backups/`, dentro da pasta do banco. Se o backup falhar, não recria as tabelas.
-Outros arquivos não são apagados. Para restaurar, pare os processos e copie o
-backup escolhido para o caminho do banco.
+`setup_demo.py` prepara tudo de uma vez: gera o histórico (30 a 90 dias; padrão 60),
+incluindo o dia atual parcial e eventos anormais, sincroniza os alertas, compara os
+modelos, treina, gera a previsão e o relatório. **Ele recria as tabelas de leituras e
+alertas**: pare o coletor antes. Se o banco já tiver dados, uma cópia é salva em
+`data/backups/` antes; se o backup falhar, nada é apagado. Para restaurar, pare os
+processos e copie o backup desejado para o caminho do banco.
 
-A demonstração aceita 30–90 dias; 60 é o padrão. Gera também o dia atual parcial,
-eventos anormais, indicadores, comparação de modelos, previsão e relatório.
-Reexecutar regenera os dados com a seed configurada; o instante final muda.
-
-Para a versão compacta com **exatamente 5.000 leituras** (1.250 por dispositivo):
+Versão compacta com **exatamente 5.000 leituras** (1.250 por dispositivo, um instante
+a cada ~39 minutos):
 
 ```powershell
 .\.venv\Scripts\python.exe scripts/setup_demo.py --days 33 --records 5000
 ```
 
-Em 04/10/2026 esse comando cobre 01/09/2026 até o horário da execução. Os instantes
-são igualmente espaçados, com intervalo aproximado de 39 minutos, preservando os
-dias completos para análise e treinamento. O total conta as quatro leituras de
-cada instante, não 5.000 instantes. O coletor acrescentará novas leituras se for
-iniciado; não há descarte automático para manter o total fixo.
+Para repetir exatamente as versões testadas, instale `requirements-lock.txt` no lugar
+de `requirements.txt` (registrado em Windows com Python 3.14).
 
-Para repetir as versões validadas, instale `requirements-lock.txt` em vez de
-`requirements.txt`. O primeiro registra também dependências transitivas do
-ambiente Windows/Python 3.14 testado; a disponibilidade de wheels pode variar
-por plataforma. O segundo declara faixas compatíveis.
+### Coleta contínua
 
-Linux/macOS: use `python3 -m venv .venv`, `.venv/bin/python` nos comandos seguintes
-e `cp .env.example .env`. A execução foi validada no Windows.
+Em outro terminal, com o painel aberto:
 
-## Fluxo manual
+```powershell
+.\.venv\Scripts\python.exe scripts/run_collector.py
+```
 
-Para um banco novo, sem usar setup_demo:
+A cada intervalo (60 s por padrão) o coletor gera e valida uma leitura de cada
+dispositivo, grava no banco, atualiza alertas, avalia previsões de dias que terminaram,
+retreina o modelo de aprendizado contínuo e gera o relatório semanal quando uma semana
+fecha. `--once` faz uma única coleta, útil para teste. O painel não se atualiza
+sozinho: recarregue a página ou mude um filtro para ver as leituras novas.
+
+### Passo a passo manual
+
+Para montar um banco novo sem `setup_demo.py`:
 
 ```powershell
 .\.venv\Scripts\python.exe -m scripts.init_db
@@ -81,249 +97,196 @@ Para um banco novo, sem usar setup_demo:
 .\.venv\Scripts\python.exe scripts/train_model.py
 .\.venv\Scripts\python.exe scripts/predict.py
 .\.venv\Scripts\python.exe scripts/generate_report.py
-.\.venv\Scripts\python.exe -m streamlit run app/dashboard/app.py
 ```
 
-O histórico termina na meia-noite de hoje. Para datas fixas, em outro banco:
+Datas fixas, em outro banco: `generate_history.py --days 60 --start 2026-01-01
+--interval-minutes 15` e `generate_report.py --end 2026-03-02` (`--end` é exclusivo; o
+relatório cobre os sete dias anteriores). Janelas de histórico sobrepostas são
+rejeitadas.
 
-```powershell
-.\.venv\Scripts\python.exe scripts/generate_history.py --days 60 --start 2026-01-01 --interval-minutes 15
-.\.venv\Scripts\python.exe scripts/generate_report.py --end 2026-03-02
-```
+### Exportações em HTML
 
-`--end` é exclusivo: o relatório cobre os sete dias anteriores. Janelas históricas
-sobrepostas são rejeitadas. Use outra `DATABASE_URL` ou setup_demo para reiniciar.
-É possível anexar histórico a partir da última leitura; gaps maiores que uma
-hora ficam sem cobertura energética válida.
+| Comando | Resultado |
+| --- | --- |
+| `scripts/export_share_page.py` | `exports/monitoramento_compartilhar.html`: página leve, só de consulta, adaptada a celular. Carrega os gráficos de um CDN, então precisa de internet |
+| `scripts/export_site_html.py` | `exports/monitoramento_comodo.html`: cópia completa que funciona sem internet. Cadastros feitos nela ficam só no navegador |
 
-## Coleta automática
+As duas guardam os dados do momento da exportação; gere de novo para atualizar.
 
-Em outro terminal, com o dashboard aberto:
+## Publicação no Railway
 
-```powershell
-.\.venv\Scripts\python.exe scripts/run_collector.py
-```
+O repositório já vem pronto para o [Railway](https://railway.com). O site e o coletor
+rodam juntos em um único serviço, porque no Railway cada volume só pode ser ligado a um
+serviço e os dois precisam do mesmo banco.
 
-Uma coleta isolada para teste:
+| Arquivo | Função |
+| --- | --- |
+| `railway.json` | Comando de inicialização e verificação de saúde em `/_stcore/health` |
+| `scripts/railway_start.sh` | Liga `models/`, `reports/` e `logs/` ao volume, cria o histórico no primeiro deploy, inicia o coletor em segundo plano e o Streamlit na porta `$PORT` |
+| `.python-version` | Fixa o Python 3.12 no build |
+| `.gitattributes` | Mantém o script com quebras de linha do Linux |
 
-```powershell
-.\.venv\Scripts\python.exe scripts/run_collector.py --once
-```
+Passo a passo:
 
-O coletor valida cada leitura, armazena as válidas, atualiza alertas e verifica o
-relatório semanal. Restaura o contador simulado do último registro. Erros são
-registrados e há nova tentativa após o intervalo configurado; `--once` retorna
-erro quando a operação falha. A fonte Tuya ainda não implementada encerra com
-mensagem explícita. Ctrl+C encerra normalmente.
+1. No Railway, **New Project** → **Deploy from GitHub repo** → escolha este repositório.
+2. No serviço, **Add Volume** com o caminho de montagem `/data`. Sem o volume, os dados
+   são recriados a cada deploy.
+3. **Settings** → **Networking** → **Generate Domain**, aceitando a porta sugerida.
+4. Acompanhe em **Deployments** → **View Logs**. O primeiro deploy leva de 1 a 3 minutos
+   para gerar os dados; o site está no ar quando aparecer "You can now view your
+   Streamlit app".
 
-O relatório automático cobre a última semana fechada de segunda a domingo,
-uma vez por semana/banco, quando há histórico cobrindo as fronteiras. O processo
-precisa estar em execução: não é um serviço do Windows nem agendamento do sistema.
-O relatório manual e o botão do dashboard usam os sete dias completos anteriores
-a hoje. O coletor não treina o modelo automaticamente.
+Variáveis opcionais, na aba **Variables**: qualquer item da tabela de
+[Configuração](#configuração) e `INITIAL_DAYS` (dias de histórico do primeiro deploy,
+padrão 60). O serviço fica ligado o tempo todo, então consome crédito do plano
+continuamente.
 
 ## Configuração
 
-Precedência: variáveis do processo > `.env` na raiz > padrões. Números usam ponto
-decimal. `.env` e artefatos locais são ignorados no Git.
+Ordem de prioridade: variáveis do processo, depois o arquivo `.env` na raiz, depois os
+padrões abaixo. Números usam ponto decimal. O `.env` não vai para o Git.
 
 | Variável | Padrão | Uso |
 | --- | --- | --- |
-| DATABASE_URL | sqlite:///data/monitoramento.db | Arquivo SQLite |
-| DATA_SOURCE | simulator | tuya está reservado e indisponível |
-| SIMULATION_SEED | 42 | Seed inteira |
-| SIMULATION_INTERVAL_SECONDS | 60 | Intervalo positivo do coletor |
-| ENERGY_PRICE_KWH | 0.78938 | Enel SP residencial convencional, R$/kWh |
-| LAMP_COUNT | 4 | Quantidade de lâmpadas |
-| LAMP_POWER_W | 15 | Potência por lâmpada, W |
-| USAGE_HOURS_MIN | 8 | Limite inferior da atividade diária sintética |
-| USAGE_HOURS_MAX | 10 | Limite superior da atividade diária sintética |
-| TEMPERATURE_MIN / TEMPERATURE_MAX | 18 / 30 | Limites em °C |
-| HUMIDITY_MIN / HUMIDITY_MAX | 40 / 70 | Limites em % |
-| TUYA_ACCESS_ID / TUYA_ACCESS_SECRET | vazio | Reservados, sem uso real |
-| TUYA_ENDPOINT / TUYA_DEVICE_IDS | vazio | Reservados para o adaptador futuro |
+| DATABASE_URL | sqlite:///data/monitoramento.db | Arquivo SQLite; caminhos relativos partem da raiz |
+| DATA_SOURCE | simulator | `tuya` está reservado e ainda indisponível |
+| SIMULATION_SEED | 42 | Semente que torna a simulação reproduzível |
+| SIMULATION_INTERVAL_SECONDS | 60 | Intervalo do coletor |
+| ENERGY_PRICE_KWH | 0.78938 | Tarifa Enel SP residencial convencional, R$/kWh |
+| LAMP_COUNT / LAMP_POWER_W | 4 / 15 | Lâmpadas do circuito e potência de cada uma (W) |
+| USAGE_HOURS_MIN / USAGE_HOURS_MAX | 8 / 10 | Faixa de horas de uso nos dias úteis |
+| TEMPERATURE_MIN / TEMPERATURE_MAX | 18 / 30 | Limites de alerta em °C |
+| HUMIDITY_MIN / HUMIDITY_MAX | 40 / 70 | Limites de alerta em % |
+| TUYA_ACCESS_ID / TUYA_ACCESS_SECRET / TUYA_ENDPOINT / TUYA_DEVICE_IDS | vazio | Reservados para a integração futura; não coloque credenciais aqui |
 
-Aceita URLs SQLite simples e `sqlite:///:memory:` para testes. Caminhos relativos
-são resolvidos na raiz, sem caminhos específicos do computador no código.
-A pasta do banco é criada automaticamente. Importar módulos não cria o banco;
-reinicializar preserva os registros.
+Horários usam o fuso **America/Sao_Paulo** e são gravados sem offset.
 
-Horários usam **America/Sao_Paulo**, persistidos sem offset. Essa convenção deve
-ser revisada para operações em vários fusos e séries com horário de verão.
+**Tarifa:** consultada em 04/10/2026 na
+[Enel São Paulo](https://www.enel.com.br/pt-saopaulo/Para_Voce/tarifa-energia-eletrica.html),
+classe B1 residencial convencional, vigente desde 04/07/2026: TUSD 472,42 + TE 316,96
+R$/MWh = 0,78938 R$/kWh. Não inclui impostos, bandeiras, iluminação pública nem valores
+mínimos da ligação. Atualize no `.env` quando a tarifa mudar.
 
-## Arquitetura e arquivos
+## Arquitetura
 
 ```mermaid
 flowchart LR
-    Sim[Dispositivos simulados] --> Source[DataSource]
+    Sim[Simulador de dispositivos] --> Source[DataSource]
     Tuya[Tuya futura] -.-> Source
     Source --> Ingestao[Validação e ingestão]
     Ingestao --> DB[(SQLite)]
     DB --> Analytics[Análises e energia]
     DB --> Alerts[Alertas]
-    Analytics --> ML[Machine Learning]
-    Analytics --> UI[Streamlit]
+    Analytics --> ML[Machine learning]
+    Analytics --> UI[Painel Streamlit]
     Alerts --> UI
     ML --> UI
-    Analytics --> Reports[Relatório HTML]
-    ML --> Reports
-    UI --> Reports
+    UI --> Reports[Relatório HTML]
 ```
 
 ```text
 app/
   config.py                 Configuração validada e horário local
-  logging_config.py         Logs rotativos e erros de CLI
-  data_sources/
-    readings.py             Contrato e validação de leituras
-    base.py                 Interface abstrata DataSource
-    simulator.py            Simulador temporal
-    factory.py              Seleção da fonte
-    tuya.py                 Adaptador futuro, sem rede
-  database/
-    connection.py           Engine e inicialização
-    models.py               Tabelas de leituras e alertas
-    repository.py           Inserção, consultas e agregações
+  logging_config.py         Logs rotativos e tratamento de erros dos comandos
+  presentation.py           Rótulos em português e tema dos gráficos
+  data_sources/             Contrato de leitura, simulador, clima de Mauá, adaptador Tuya futuro
+  database/                 Conexão, tabelas e consultas
   services/
-    ingestion.py            Coleta, restauração e histórico
+    ingestion.py            Coleta e geração de histórico
     analytics.py            Estatísticas, consumo e gráficos
     energy.py               Custos e projeção mensal
-    alerts.py               Regras, cooldown e persistência
+    alerts.py               Regras de alerta e intervalo mínimo entre ocorrências
+    equipment.py            Cadastro de equipamentos
+    dynamic_usage.py        Rotina de ocupação do cômodo
+    lighting.py             Carga das lâmpadas
     reports.py              Relatório HTML
-    maintenance.py          Rotinas do coletor
-    demo.py                 Demonstração completa
+    maintenance.py          Rotinas executadas pelo coletor
+    demo.py                 Preparação completa da demonstração
   ml/
-    features.py             Dataset e divisão temporal
-    evaluate.py             Baselines, métricas, recursão
-    train.py                Treinamento e seleção
-    predict.py              Previsão e verificação do histórico
+    features.py             Dataset diário e divisão temporal
+    evaluate.py             Modelos de referência e métricas
+    train.py                Treinamento e seleção do modelo
+    predict.py              Previsão a partir do modelo salvo
+    learning.py             Aprendizado contínuo com novas leituras
   dashboard/
-    app.py                  Indicadores e histórico
-    forecast.py             Previsões e métricas explicadas
-scripts/                    Comandos operacionais
-tests/                      Pytest e Streamlit AppTest
-docs/                       Integração Tuya e validação das etapas
-data/                       SQLite e backups
-models/                     Joblib, metadados JSON e previsão CSV
-reports/                    HTML e resumo da demonstração
-logs/                       app.log e até 3 arquivos rotacionados
-.streamlit/config.toml      Tema, servidor local, telemetria desativada
+    app.py                  Painel principal e navegação
+    forecast.py             Tela de previsão
+    learning.py             Avaliação das previsões anteriores
+    equipment.py            Tela de equipamentos
+    share_page.html         Modelo da página de compartilhamento
+    site_export.html        Modelo da cópia offline
+scripts/                    Comandos de operação, exportação e inicialização no Railway
+tests/                      Testes pytest e Streamlit AppTest
+docs/                       Integração Tuya, registro das etapas e validação
+data/ models/ reports/      Banco, modelos e relatórios gerados (fora do Git)
 ```
 
-## Simulação, análises e energia
+## Como funciona
 
-Dispositivos: sensor_01, sensor_02, sensor_03 e energy_meter_01. Temperatura combina
-ciclo diário, variação lenta entre dias, diferenças de posição e ruído suave.
-Umidade varia inversamente com temperatura. Eventos térmicos anormais aparecem
-aproximadamente a cada 17 dias. A carga elétrica é exclusivamente das lâmpadas,
-com acionamentos parciais próximos de 15/30/45/60 W e períodos sem carga.
-Corrente = potência/tensão, assumindo fator de potência unitário nesta demonstração.
+### Dispositivos e energia
 
-O perfil térmico usa as médias climatológicas mensais de Mauá/SP, interpoladas
-para evitar saltos entre meses. Para setembro, a referência externa é mínima média
-de 15 °C e máxima média de 23 °C; para outubro, 16 °C e 24 °C.
-[Referência: Climatempo](https://www.climatempo.com.br/climatologia/488/maua-sp),
-consultada em 04/10/2026. São médias históricas, não medições de setembro/outubro
-de 2026. Para o estoque, assumimos +1 °C, amplitude diária 20% menor, pequenas
-diferenças entre sensores e variações meteorológicas suaves. Eventos de aquecimento
-podem superar as médias. A umidade é uma hipótese sintética associada à temperatura,
-não foi calibrada com uma série observada local. Parâmetros em data_sources/climate.py
-e simulator.py. Modelos e relatórios precisam ser regenerados após alterar esse perfil.
+- **Sensores (sensor_01 a sensor_03):** a temperatura combina o ciclo diário, variação
+  entre dias, diferença de posição de cada sensor e ruído suave, partindo das médias
+  climatológicas mensais de Mauá/SP ([Climatempo](https://www.climatempo.com.br/climatologia/488/maua-sp),
+  consultada em 04/10/2026; setembro 15–23 °C, outubro 16–24 °C), com +1 °C e amplitude
+  20% menor por ser um ambiente fechado. A umidade varia de forma inversa à temperatura.
+  A cada ~17 dias ocorre um evento térmico anormal.
+- **Disjuntor inteligente (energy_meter_01):** mede potência, tensão (~220 V), corrente
+  (P/V, fator de potência unitário) e o contador acumulado de energia. Nos dias úteis há
+  seis períodos de ocupação que somam de 8 a 10 horas; dentro deles as lâmpadas ligam
+  de forma independente, em blocos de 15 a 50 minutos, então a potência varia entre 0
+  e 60 W. Aos sábados o uso termina às 12h; aos domingos não há consumo. Equipamentos
+  cadastrados entram nesse mesmo perfil a partir da data do cadastro.
+- **Cálculo de consumo:** o consumo é a diferença entre leituras do contador. Intervalos
+  maiores que 1 hora, contadores que diminuem e intervalos inválidos são descartados e
+  reduzem a cobertura; ausência de leitura nunca vira consumo zero. Intervalos que
+  atravessam horas ou dias são divididos proporcionalmente.
+- **Custos:** `custo = consumo_kWh × tarifa`. A projeção mensal usa a média dos dias
+  completos do filtro × dias do mês da data final × tarifa.
 
-O simulador integra exatamente o tempo em que as lâmpadas ficam ligadas, inclusive
-quando o intervalo de amostragem atravessa o horário de acendimento ou desligamento.
-O primeiro registro é referência zero. A análise calcula diferenças entre contadores;
-não soma energia acumulada.
-Intervalos que atravessam horas/dias são divididos proporcionalmente, uma aproximação
-uniforme dentro do intervalo. Gaps > 1h, deltas negativos e intervalos inválidos são
-excluídos e reduzem a cobertura. Ausência de medição não equivale a consumo zero.
+### Alertas
 
-Temperatura/umidade: média, mínimo, máximo, mediana e desvio padrão amostral por sensor.
-Energia: potência média/máxima, perfil horário, agregações diárias, semanais e mensais.
-`custo = consumo_kWh × tarifa`. Projeção mensal: média dos dias completos disponíveis
-nos sete dias anteriores × dias do mês × tarifa. Sem dias completos, fica indisponível.
-Sem impostos, bandeiras ou demanda contratada.
+- Temperatura e umidade fora dos limites geram alerta (igualdade não alerta). Desvio de
+  pelo menos 5 °C ou 10 pontos percentuais é **Crítico**; os demais são **Atenção**.
+- Potência elevada: acima do maior valor entre 1,8 × média, média + 3 desvios padrão
+  das 24 h anteriores e 500 W, com pelo menos 24 amostras anteriores.
+- Cada dispositivo e tipo de alerta tem um intervalo mínimo de 6 horas entre ocorrências.
 
-Tarifa consultada em 04/10/2026 na [Enel São Paulo](https://www.enel.com.br/pt-saopaulo/Para_Voce/tarifa-energia-eletrica.html):
-classe B1 residencial convencional, vigente desde 04/07/2026, TUSD 472,42 + TE
-316,96 R$/MWh = **0,78938 R$/kWh**. O valor fica no `.env`, com funcionamento
-offline; não há consulta automática a futuros reajustes. Atualize a configuração
-conforme a tarifa aplicável da conta. Impostos, bandeiras, iluminação pública e
-valores mínimos da ligação não são atribuídos exclusivamente a esse cômodo.
+### Machine learning
 
-O disjuntor representa o consumo total do circuito. Nos dias úteis são geradas seis
-sessões de ocupação com duração total entre 8 e 10 horas e pausas variáveis.
-Aos sábados, as sessões são encerradas até as 12h; aos domingos, não há consumo. Dentro das sessões, as unidades podem ligar de forma
-independente, em blocos variáveis de 15 a 50 minutos. A potência varia de zero a
-60 W no cenário das quatro lâmpadas, com até 3% de diferença abaixo do nominal.
-O tempo de atividade do circuito não equivale a quatro lâmpadas ligadas durante
-todo esse tempo. A energia é a integral exata desses segmentos; trocar a frequência
-de coleta não muda o consumo acumulado. Tensão varia em torno de 220 V; corrente
-usa P/V como simplificação de fator de potência unitário. São hipóteses sintéticas,
-não especificações de um fabricante. O painel estima horas ativas por interpolação
-entre leituras; por isso essa estimativa pode diferir da atividade gerada.
-Os cálculos mantêm precisão completa; apenas a exibição arredonda para duas casas.
+1. **Alvo:** consumo de cada dia completo. Dias parciais e janelas com lacunas ficam de fora.
+2. **Variáveis:** dia da semana, fim de semana, seno/cosseno semanal, consumo de 1, 2 e 7
+   dias antes, média dos 7 dias anteriores e temperatura, umidade e potência do dia anterior.
+3. **Divisão cronológica** aproximada de 60/20/20 (treino, validação, teste). São
+   necessárias ao menos 21 linhas utilizáveis: gere no mínimo 30 dias, de preferência 60–90.
+4. **Candidatos:** dois modelos de referência (consumo do dia anterior e média de 7 dias),
+   Linear Regression, Random Forest e Gradient Boosting.
+5. **Avaliação:** em blocos de até 7 dias, usando as próprias previsões como entrada dos
+   dias seguintes do bloco, como aconteceria na prática.
+6. **Seleção:** menor erro absoluto médio (MAE) na validação, com RMSE como desempate. Um
+   modelo de referência pode vencer. Depois de avaliado, o modelo final é treinado com
+   todo o histórico.
 
+MAE é o erro médio em kWh/dia; RMSE dá mais peso aos erros grandes. A faixa mostrada
+nos gráficos usa o percentil 90 dos erros observados; é uma referência descritiva, não
+um intervalo de confiança calibrado.
 
-O simulador não reconstrói detalhes de uma longa interrupção do coletor. Para a
-apresentação com cobertura contínua até agora, execute setup_demo.py.
+**Aprendizado contínuo:** a tabela `forecasts` registra cada previsão emitida. Quando um
+dia termina, o coletor compara a previsão com o consumo medido, retreina um Random
+Forest com até 14 dias recentes e emite as previsões dos 7 dias seguintes. Previsões
+antigas nunca são sobrescritas, o que permite acompanhar o erro ao longo do tempo. Na
+preparação da demonstração esse ciclo é reproduzido sobre o histórico, com as emissões
+marcadas como `historical_replay`.
 
-## Alertas e interface
+Carregue somente arquivos `.joblib` gerados pelo próprio projeto: o formato executa
+código ao ser aberto.
 
-Limites ambientais são estritos: igualdade não alerta. Desvios de pelo menos 5 °C
-ou 10 pontos percentuais são CRITICAL; demais são WARNING. Potência elevada:
-acima do maior entre 1,8 × média, média + 3 desvios padrão das 24h anteriores e 500 W,
-com ao menos 24 amostras anteriores. Regra demonstrativa, não diagnóstico elétrico.
+### Relatório
 
-Cooldown persistente de seis horas por dispositivo/tipo. Alertas ativos representam
-condições na última leitura recente, não todo o histórico. Limite de frescor: maior
-entre 30 minutos e dois intervalos de coleta. A data da última leitura permanece visível no cabeçalho.
-
-Filtros de período/dispositivo/variável afetam o histórico ambiental. Indicadores de
-energia mantêm os períodos rotulados. Clique em **Atualizar leituras** após novas
-coletas: não há atualização automática do navegador nesta versão.
-
-## Machine learning
-
-1. Alvo: consumo diário de dias completos. Dias parciais e janelas com lacunas são
-   excluídos, sem substituir ausência por zero ou juntar dias separados.
-2. Features: dia da semana, fim de semana, seno/cosseno semanal, lags 1/2/7, média
-   móvel dos sete dias anteriores e temperatura/umidade/potência do dia anterior.
-   Hora não entra porque a frequência é diária.
-3. Divisão cronológica aproximada 60/20/20 após as defasagens. Exige ao menos 21
-   linhas utilizáveis: gere 30 dias completos no mínimo, preferencialmente 60–90.
-4. Baselines: consumo anterior e média móvel de sete dias. Modelos: LinearRegression,
-   RandomForestRegressor e GradientBoostingRegressor, sem redes neurais.
-5. Avaliação em blocos recursivos de até sete dias. Dentro de cada bloco, previsões
-   alimentam os lags; observações reais entram apenas na origem do próximo bloco.
-   Temperatura/umidade futuras repetem a semana anterior; potência média futura
-   deriva do kWh previsto. Não são consultadas covariáveis futuras reais.
-6. Seleção pelo menor MAE de validação, RMSE no desempate. Um baseline pode vencer.
-   Teste medido após refit em treino+validação. Só depois o modelo final é reajustado
-   em todos os dias, inclusive teste. Métricas reportadas são da avaliação anterior
-   ao ajuste final, não do desempenho dentro da amostra do modelo salvo.
-
-MAE é erro absoluto médio em kWh/dia; RMSE penaliza mais erros grandes. MAPE exclui
-alvos zero e é omitido se não houver alvos aplicáveis; o JSON registra essa contagem.
-A faixa visual usa o percentil 90 do erro absoluto de validação do modelo escolhido.
-É **heurística, sem garantia probabilística**: amostra pequena e usada na seleção,
-não um intervalo calibrado de confiança ou de previsão.
-
-O joblib contém modelo e metadados; JSON paralelo registra parâmetros, datas, seed,
-features, versão, splits e métricas. A assinatura do histórico impede usar o artefato
-após alterar dados antigos ou trocar de base. Treine novamente nesses casos. Carregue
-somente joblib produzido localmente pelo projeto, nunca arquivos desconhecidos.
-
-A previsão começa depois do último dia completo, podendo incluir hoje inteiro;
-não significa apenas consumo restante de hoje. Datas e aviso de histórico atrasado
-são mostrados. O CSV é exportação; a interface recalcula com o histórico atual.
-
-## Relatório semanal
-
-HTML autossuficiente: período, temperatura, umidade, leituras fora da faixa, energia,
-custos, cobertura, alertas e previsão quando disponível. Até 20 principais ocorrências
-são detalhadas; totais abrangem todo o período. O botão **Gerar relatório semanal**
-salva em reports e oferece download. Pode ser impresso em PDF pelo navegador.
+Arquivo HTML independente com período, temperatura, umidade, leituras fora da faixa,
+energia, custos, cobertura, alertas (até 20 detalhados) e previsão. O botão na tela de
+previsão gera o relatório do filtro atual e oferece o download; o navegador pode
+salvá-lo em PDF.
 
 ## Testes e solução de problemas
 
@@ -332,90 +295,30 @@ salva em reports e oferece download. Pode ser impresso em PDF pelo navegador.
 .\.venv\Scripts\python.exe -m pip check
 ```
 
-Testes usam seeds, dados conhecidos, bancos temporários e AppTest, sem credenciais
-ou internet. Não alteram o banco da apresentação. pytest.ini reserva
-`.pytest_tmp`, limpa pelo pytest; não salve arquivos próprios nessa pasta.
+São 73 testes, com sementes fixas, bancos temporários e Streamlit AppTest. Não usam
+internet nem alteram o banco da demonstração.
 
-| Situação | Ação |
+| Situação | O que fazer |
 | --- | --- |
-| Banco vazio | Gere histórico ou execute setup_demo.py |
-| Banco indisponível | Confira DATABASE_URL, permissões e inicialização |
-| Histórico sobreposto | Use outra base ou setup_demo.py com backup |
-| Configuração inválida | Números com ponto, intervalo positivo e limites coerentes |
-| Modelo ausente / histórico insuficiente | Gere 60 dias completos e execute train_model.py |
-| Modelo incompatível | Treine novamente neste ambiente e com o banco atual |
-| Leituras antigas / hoje sem cobertura | Execute setup_demo.py ou mantenha o coletor ativo |
-| DATA_SOURCE=tuya | Use simulator; integração real ainda não existe |
-| Porta 8501 ocupada | Acrescente --server.port 8502 ao comando Streamlit |
+| Banco vazio | Execute `setup_demo.py` ou gere o histórico |
+| Banco indisponível | Confira `DATABASE_URL` e as permissões da pasta |
+| Histórico sobreposto | Use outro banco ou `setup_demo.py` (faz backup antes) |
+| Configuração inválida | Use ponto decimal, intervalo positivo e limites coerentes |
+| Modelo ausente ou incompatível | Gere pelo menos 30 dias completos e rode `train_model.py` |
+| Leituras antigas | Rode `setup_demo.py` ou deixe o coletor ligado |
+| `DATA_SOURCE=tuya` | Use `simulator`; a integração real ainda não existe |
+| Porta 8501 ocupada | Acrescente `--server.port 8502` ao comando do Streamlit |
 
-Logs rotativos em logs/app.log. CLIs retornam código não zero em falhas, sem registrar
-segredos; dashboard apresenta mensagens amigáveis. Não envia e-mails ou mensagens
-externas. Veja docs/TUYA.md, docs/ETAPAS.md e docs/VALIDACAO.md.
+Logs ficam em `logs/app.log`, com rotação automática e sem dados sensíveis.
 
 ## Limitações
 
-A simulação simplifica ambiente, carga e comportamento humano. Não há autenticação,
-múltiplos estabelecimentos, migrações de schema, implantação em nuvem nem calibração
-real. SQLite atende à apresentação local; alto volume/concorrência exigem revisão.
-O dashboard lê o histórico em memória. Energia foi dimensionada para um medidor.
-Não há coleta com o processo desligado. Resultados sintéticos não validam previsão real.
+- Os dados são simulados; os modelos não foram validados com medições reais do cômodo.
+- Não há autenticação: quem acessa o painel publicado pode cadastrar equipamentos.
+- SQLite atende à demonstração; volume alto ou muitos acessos simultâneos exigiriam outro banco.
+- Sem migrações de schema e sem suporte a vários estabelecimentos.
+- O coletor só registra leituras enquanto está em execução e não reconstrói períodos parados.
 
-### Aprendizado com novas leituras
-
-A tabela SQLite `forecasts` guarda emissão, fim do histórico de treinamento, dia
-previsto, previsão, faixa, valor observado e instante de avaliação. O coletor
-avalia previsões pendentes quando o dia fica completo; depois treina Random Forest
-com até 14 exemplos diários recentes e registra sete novos dias, a partir do dia
-seguinte à emissão. A previsão antiga nunca é sobrescrita. A faixa usa o percentil
-90 dos erros absolutos dos 14 últimos dias avaliados (última previsão anterior ao
-dia), exigindo pelo menos três resultados. Ela é descritiva e não garante cobertura.
-
-`setup_demo.py` entrega o histórico simulado em ordem cronológica à mesma rotina,
-marcando as emissões como `historical_replay`: é uma reprodução histórica, não uma
-alegação de execução ao vivo naquelas datas. Os artefatos de comparação inicial
-continuam separados do modelo de aprendizado contínuo. O erro pode subir ou cair.
-Para novos dados, mantenha `scripts/run_collector.py` em execução. Recarregar a
-página apenas consulta os registros, não inventa observações.
-
-O filtro único de datas e dispositivo permanece ao navegar entre todas as telas.
-Resumo Executivo concentra os indicadores numéricos de ambiente, energia,
-previsões e equipamentos. As demais telas apresentam gráficos, tabelas e cadastro.
-Ele filtra médias ambientais, energia, custos, alertas e relatórios. Selecionar um
-sensor ambiental não inclui as leituras do disjuntor. A projeção mensal usa dias
-completos dentro do filtro e o mês da data final. Em Previsão energética, as datas
-selecionam os dias previstos, o histórico observado e os erros correspondentes;
-o treinamento e as previsões prospectivas registradas permanecem preservados.
-Os calendários permitem consultar também as datas futuras com previsão disponível.
-Equipamentos mostra as cargas já cadastradas até o fim do período, incluindo as
-anteriores que continuam ativas. O limite de umidade de 70% é configuração do
-pedido inicial, não uma recomendação técnica validada para o cômodo.
-
-### Cadastro de equipamentos
-
-No menu lateral, escolha **Equipamentos** para adicionar nome, quantidade e
-potência nominal. As quatro lâmpadas iniciais já estão incluídas. Não há cadastro
-de horário: cargas adicionais participam do perfil dinâmico após `active_from`.
-O coletor consulta esses cadastros em cada leitura; previsões se ajustam com novos
-dias completos. O cadastro fica em `equipment` e é preservado ao recriar a demo.
-As antigas colunas de programação permanecem apenas por compatibilidade de banco
-e não influenciam mais leituras, telas ou cálculos. A fonte continua simulada e
-não envia comandos a aparelhos físicos.
-
-As explicações das métricas de erro ficam no ícone de ajuda ao lado do indicador.
-O aviso textual de leituras desatualizadas foi removido; a data da última leitura
-continua visível no cabeçalho.
-
-### Arquivo HTML independente
-
-Execute `.venv\Scripts\python.exe scripts/export_site_html.py` para gerar
-`exports/monitoramento_comodo.html`. Abra esse arquivo diretamente no navegador:
-os dados e o Plotly estão incorporados, sem depender de internet. Os filtros de
-data/dispositivo recalculam os indicadores da cópia; previsões são as que estavam
-registradas na exportação. Cadastros adicionados no HTML ficam no navegador e podem
-ser baixados como JSON; não são enviados automaticamente ao banco Python.
-
-
-Atualização do perfil semanal: a regra de sábado até as 12h e domingo sem consumo
-se aplica tanto às lâmpadas iniciais quanto às cargas adicionais. Potência e energia
-acumulada permanecem consistentes com essa regra. Os gráficos de tensão e corrente
-foram retirados da tela; os indicadores numéricos do circuito foram preservados.
+Mais detalhes: [docs/ETAPAS.md](docs/ETAPAS.md) (implementação por etapas),
+[docs/VALIDACAO.md](docs/VALIDACAO.md) (validações executadas) e
+[docs/TUYA.md](docs/TUYA.md) (integração com dispositivos reais).

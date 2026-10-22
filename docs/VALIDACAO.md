@@ -1,14 +1,31 @@
-# Validação final — 04/10/2026
+# Validação
 
-## Cenário residencial atualizado
+## Situação atual — 21/10/2026
 
-Em atualização posterior, os 5.000 registros foram regenerados para duas lâmpadas
+- Cenário: cômodo em Mauá/SP, três sensores ambientais e disjuntor inteligente com
+  quatro lâmpadas LED de 15 W; uso de 8 a 10 h nos dias úteis, sábados até as 12h e
+  domingos sem consumo.
+- Suíte completa: **73 testes aprovados** em Windows, Python 3.14.7
+  (`python -m pytest -q`).
+- Painel revisado no navegador: resumo, ambiente, energia, alertas, previsão e
+  equipamentos, com o tema visual atual.
+- Publicação preparada para o Railway (`railway.json` e `scripts/railway_start.sh`):
+  site e coletor no mesmo serviço, com banco, modelos e relatórios em volume persistente.
+
+## Histórico das validações
+
+As seções a seguir registram cada validação no momento em que foi feita. Números de
+consumo, modelo e quantidade de testes refletem o cenário daquela data e foram
+superados pelas atualizações seguintes.
+
+### Cenário intermediário (substituído)
+
+Em uma etapa intermediária, os 5.000 registros foram regenerados para duas lâmpadas
 LED de 9 W, cinco horas/dia (18h–23h), sem outras cargas. Tarifa Enel SP residencial:
 R$ 0,78938/kWh. Projeção de outubro: 2,79 kWh e R$ 2,20, sem tributos e adicionais.
-Modelo, previsão e relatório atualizados. Os resultados abaixo são históricos de
-validações anteriores; não representam a carga residencial atual.
+Modelo, previsão e relatório atualizados. Esse cenário foi substituído pelas quatro lâmpadas de 15 W descritas abaixo.
 
-## Atualização posterior: Mauá e base compacta
+### Atualização posterior: Mauá e base compacta
 
 A base de apresentação foi regenerada com `setup_demo.py --days 33 --records 5000`:
 **5.000 leituras**, 1.250 por dispositivo, de 01/09/2026 até 04/10/2026 às 11:10.
@@ -19,14 +36,14 @@ a referência e as hipóteses descritas no README. Média das temperaturas gerad
 20,20 °C; extremos de 13,63 a 30,56 °C incluindo diferenças de posição e eventos.
 Esses extremos são sintéticos e não representam registros meteorológicos observados.
 
-O banner inicial foi removido e o navegador confirmou a indicação `5.000 registros`.
+O navegador confirmou a indicação `5.000 registros`.
 Os resultados de 60 dias abaixo registram a validação anterior e não descrevem
 os artefatos atuais da demonstração compacta.
 
 Validação em Windows, Python 3.14.7, com dependências registradas em
 requirements-lock.txt. Todos os dados usados foram simulados.
 
-## Instalação limpa
+### Instalação limpa
 
 Foi criada uma cópia contendo apenas código, configuração de exemplo, testes e
 documentação em `.validation/fresh-t4wr0xge`, sem banco, modelo ou ambiente virtual.
@@ -52,15 +69,15 @@ O teste inicial da cópia limpa revelou que o diretório temporário do pytest
 dependia de um cache pré-existente. A configuração foi corrigida para `.pytest_tmp`
 diretamente na raiz e toda a suíte foi executada novamente com sucesso.
 
-## Interface
+### Interface
 
 O dashboard principal foi iniciado em `127.0.0.1:8501` e inspecionado no navegador.
-Foram confirmados os seis indicadores, histórico, aviso de simulação, previsão,
-comparação de modelos e controle de relatório. Os indicadores foram organizados
-em duas linhas para evitar truncamento no painel estreito do Codex.
+Foram confirmados os seis indicadores, histórico, previsão, comparação de modelos
+e controle de relatório. Os indicadores foram organizados em linhas de até quatro
+cartões para evitar truncamento em telas estreitas.
 AppTest cobre banco vazio, preenchido, filtro de sensor e painel de previsão com modelo.
 
-## Resultado demonstrativo
+### Resultado demonstrativo
 
 Seed 42, histórico completo de 05/08/2026 a 03/10/2026, mais dia atual parcial:
 
@@ -78,14 +95,14 @@ O teste reservado não foi usado na seleção. O modelo salvo foi reajustado em
 todos os dados depois da avaliação. Esses resultados demonstram o funcionamento
 do pipeline, **não validam previsão para o estabelecimento real**.
 
-## Limites da validação
+### Limites da validação
 
-Sem conexão Tuya, sem implantação em nuvem, sem dispositivos físicos, sem PDF
+Sem conexão Tuya, sem dispositivos físicos, sem PDF
 automático e sem teste em outro sistema operacional. O relatório HTML é o formato
 entregue. Operação simulada e testes não exigem internet após instalar os pacotes.
 
 
-## Atualização: quatro lâmpadas e aprendizado progressivo — 04/10/2026
+### Atualização: quatro lâmpadas e aprendizado progressivo — 04/10/2026
 
 - 5.000 leituras preservadas, geradas novamente após cópia de segurança do banco.
 - Quatro lâmpadas de 15 W; referência de 5 horas/dia com variação de ocupação.
@@ -105,7 +122,7 @@ usado no ciclo de atualização diária, com uma janela recente de treinamento.
 Os resultados anteriores neste documento são históricos e não descrevem a carga atual.
 
 
-## Disjuntor inteligente e uso dinâmico — 04/10/2026
+### Disjuntor inteligente e uso dinâmico — 04/10/2026
 
 Histórico recriado com backup: 5.000 leituras, 33 dias completos. Cadastro de
 cargas reduzido a nome, quantidade e potência; antigas programações são ignoradas.
@@ -126,7 +143,7 @@ validadas de um fabricante. A faixa 8–10 h representa atividade do circuito, n
 o funcionamento simultâneo das quatro lâmpadas durante todo esse tempo.
 
 
-## Perfil de fim de semana — 04/10/2026
+### Perfil de fim de semana — 04/10/2026
 
 Os gráficos de tensão e corrente foram removidos do painel. A fonte agora encerra
 toda atividade aos sábados às 12h e não gera consumo aos domingos, incluindo
