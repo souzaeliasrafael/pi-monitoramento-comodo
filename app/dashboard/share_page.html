@@ -1,0 +1,294 @@
+<title>Monitoramento do cômodo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/3.0.1/plotly-basic.min.js"></script>
+<style>
+/* Layout: coluna única de leitura (máx. 960px), resumo numérico no topo, um gráfico por seção. */
+:root{
+  --bg:#f4f6f8; --surface:#ffffff; --ink:#1c2630; --muted:#5b6876; --line:#dbe1e7; --grid:#edf0f3;
+  --accent:#2b5a84; --accent-soft:#e3ebf3; --amber:#b5781c; --amber-soft:rgba(181,120,28,.16);
+  --s2:#4f7f4e; --s3:#7a5390; --crit:#b03a2e; --crit-soft:#f8e3e0; --warn:#9a640f; --warn-soft:#f8ecd6;
+  --band:rgba(43,90,132,.07);
+  --sans:"IBM Plex Sans","Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#11161b; --surface:#192027; --ink:#e3e8ed; --muted:#97a4b1; --line:#2b353f; --grid:#232c35;
+  --accent:#86afd6; --accent-soft:#223244; --amber:#e2a650; --amber-soft:rgba(226,166,80,.18);
+  --s2:#8dbf86; --s3:#bc98d0; --crit:#ee7d72; --crit-soft:#3a2220; --warn:#e2a650; --warn-soft:#352a17;
+  --band:rgba(134,175,214,.08); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#11161b; --surface:#192027; --ink:#e3e8ed; --muted:#97a4b1; --line:#2b353f; --grid:#232c35;
+  --accent:#86afd6; --accent-soft:#223244; --amber:#e2a650; --amber-soft:rgba(226,166,80,.18);
+  --s2:#8dbf86; --s3:#bc98d0; --crit:#ee7d72; --crit-soft:#3a2220; --warn:#e2a650; --warn-soft:#352a17;
+  --band:rgba(134,175,214,.08); color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg); color:var(--ink); font:15px/1.55 var(--sans); padding-inline:16px; padding-block:0 40px}
+.wrap{max-width:960px; margin:0 auto; display:grid; gap:20px}
+h1,h2{text-wrap:balance; margin:0; line-height:1.2}
+h1{font-size:clamp(1.6rem,4.5vw,2.2rem); font-weight:700; letter-spacing:-.01em}
+h2{font-size:1.15rem; font-weight:600}
+p{margin:0}
+.num{font-family:var(--mono); font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.small{font-size:.82rem}
+
+header{padding-block:28px 4px; display:grid; gap:8px}
+.kicker{font-size:.78rem; letter-spacing:.08em; text-transform:uppercase; color:var(--muted); font-weight:500}
+.lead{color:var(--muted); max-width:62ch}
+.meta{display:flex; flex-wrap:wrap; gap:6px 18px; font-size:.85rem; color:var(--muted)}
+.meta b{color:var(--ink); font-weight:600}
+
+.controls{display:flex; flex-wrap:wrap; gap:10px 16px; align-items:center; position:sticky; top:env(safe-area-inset-top,0px); z-index:5;
+  background:var(--bg); padding-block:10px; border-bottom:1px solid var(--line)}
+.seg{display:inline-flex; border:1px solid var(--line); border-radius:8px; overflow:hidden; background:var(--surface)}
+.seg button{font:inherit; font-size:.85rem; border:0; background:none; color:var(--ink); padding:7px 12px; cursor:pointer; border-right:1px solid var(--line)}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--accent); color:var(--surface); font-weight:600}
+.seg button:focus-visible, select:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+label.sel{display:flex; align-items:center; gap:8px; font-size:.85rem; color:var(--muted)}
+select{font:inherit; font-size:.85rem; color:var(--ink); background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:7px 10px}
+.range{font-size:.82rem; color:var(--muted); margin-left:auto}
+
+.summary{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); background:var(--surface); border:1px solid var(--line); border-radius:10px}
+.stat{padding:14px 16px; display:grid; gap:2px; border-right:1px solid var(--line); min-width:0}
+.stat:last-child{border-right:0}
+.stat .label{font-size:.8rem; color:var(--muted)}
+.stat .value{font-family:var(--mono); font-size:clamp(1.25rem,3.6vw,1.6rem); font-weight:500; font-variant-numeric:tabular-nums; line-height:1.3}
+.stat .value small{font-size:.6em; color:var(--muted); margin-left:2px}
+.stat .note{font-size:.76rem; color:var(--muted)}
+
+section.block{background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:16px 16px 10px; display:grid; gap:10px; min-width:0}
+.block-head{display:flex; flex-wrap:wrap; justify-content:space-between; align-items:baseline; gap:8px 16px}
+.chart{width:100%; height:300px}
+.facts{display:flex; flex-wrap:wrap; gap:6px 22px; font-size:.86rem}
+.facts span{color:var(--muted)}
+.facts b{font-family:var(--mono); font-weight:500; color:var(--ink); font-variant-numeric:tabular-nums}
+
+.alerts{list-style:none; margin:0; padding:0; display:grid}
+.alerts li{display:grid; grid-template-columns:auto 1fr auto; gap:4px 12px; align-items:baseline; padding:9px 0; border-top:1px solid var(--line); font-size:.88rem}
+.alerts li:first-child{border-top:0}
+.tag{font-size:.72rem; font-weight:600; padding:2px 8px; border-radius:4px; white-space:nowrap}
+.tag.crit{background:var(--crit-soft); color:var(--crit)}
+.tag.warn{background:var(--warn-soft); color:var(--warn)}
+.alerts .when{font-family:var(--mono); font-size:.78rem; color:var(--muted); white-space:nowrap}
+.alerts .what{min-width:0}
+.empty{color:var(--muted); font-size:.9rem; padding:8px 0}
+
+footer{font-size:.8rem; color:var(--muted); display:grid; gap:4px; padding-top:4px}
+
+@media (max-width:720px){
+  .summary{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .stat:nth-child(2){border-right:0}
+  .stat:nth-child(-n+2){border-bottom:1px solid var(--line)}
+  .range{margin-left:0; width:100%}
+  .chart{height:260px}
+}
+@media (max-width:420px){ .alerts li{grid-template-columns:auto 1fr} .alerts .when{grid-column:2} }
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="kicker">Projeto Integrador · Mauá/SP</p>
+    <h1>Monitoramento do cômodo</h1>
+    <p class="lead">Temperatura, umidade e consumo de energia de um cômodo iluminado por quatro lâmpadas LED de 15 W, acompanhado por três sensores ambientais e um disjuntor inteligente.</p>
+    <p class="meta"><span>Última leitura <b id="last" class="num"></b></span><span>Tarifa <b id="price" class="num"></b></span></p>
+  </header>
+
+  <div class="controls">
+    <div class="seg" role="group" aria-label="Período" id="period">
+      <button type="button" data-days="7" aria-pressed="true">7 dias</button>
+      <button type="button" data-days="14" aria-pressed="false">14 dias</button>
+      <button type="button" data-days="30" aria-pressed="false">30 dias</button>
+      <button type="button" data-days="0" aria-pressed="false">Tudo</button>
+    </div>
+    <label class="sel" for="device">Sensor
+      <select id="device"><option value="all">Todos</option><option value="sensor_01">Sensor 1</option><option value="sensor_02">Sensor 2</option><option value="sensor_03">Sensor 3</option></select>
+    </label>
+    <p class="range" id="range"></p>
+  </div>
+
+  <div class="summary" id="summary"></div>
+
+  <section class="block" aria-labelledby="env-title">
+    <div class="block-head">
+      <h2 id="env-title">Ambiente</h2>
+      <div class="seg" role="group" aria-label="Variável" id="variable">
+        <button type="button" data-var="temperature_c" aria-pressed="true">Temperatura</button>
+        <button type="button" data-var="humidity_percent" aria-pressed="false">Umidade</button>
+      </div>
+    </div>
+    <p class="small muted" id="env-note"></p>
+    <div class="chart" id="env-chart"></div>
+  </section>
+
+  <section class="block" aria-labelledby="energy-title">
+    <div class="block-head"><h2 id="energy-title">Consumo diário</h2><p class="small muted">Disjuntor inteligente · kWh por dia</p></div>
+    <div class="facts" id="energy-facts"></div>
+    <div class="chart" id="energy-chart"></div>
+    <p class="small muted">Barras claras indicam dias ainda incompletos. Aos sábados o uso vai até as 12h e aos domingos não há consumo.</p>
+  </section>
+
+  <section class="block" aria-labelledby="fc-title">
+    <div class="block-head"><h2 id="fc-title">Previsão dos próximos dias</h2><p class="small muted" id="fc-model"></p></div>
+    <div class="facts" id="fc-facts"></div>
+    <div class="chart" id="fc-chart"></div>
+    <p class="small muted">A faixa sombreada mostra a variação esperada com base nos erros das previsões anteriores.</p>
+  </section>
+
+  <section class="block" aria-labelledby="al-title">
+    <div class="block-head"><h2 id="al-title">Alertas</h2><p class="small muted" id="al-count"></p></div>
+    <ul class="alerts" id="alerts"></ul>
+  </section>
+
+  <footer>
+    <p id="generated"></p>
+    <p>Custos calculados com a tarifa residencial convencional da Enel São Paulo, sem impostos, bandeiras ou iluminação pública.</p>
+  </footer>
+</div>
+
+<script id="data" type="application/json">__DATA__</script>
+<script>
+"use strict";
+const D = JSON.parse(document.getElementById("data").textContent);
+const $ = id => document.getElementById(id);
+const NAMES = {sensor_01:"Sensor 1", sensor_02:"Sensor 2", sensor_03:"Sensor 3", energy_meter_01:"Disjuntor"};
+const VARS = {temperature_c:{label:"Temperatura", unit:"°C"}, humidity_percent:{label:"Umidade", unit:"%"}};
+const TYPES = {TEMPERATURA_ALTA:"Temperatura alta", TEMPERATURA_BAIXA:"Temperatura baixa", UMIDADE_ALTA:"Umidade alta", UMIDADE_BAIXA:"Umidade baixa", CONSUMO_ELEVADO:"Potência elevada"};
+const fmt = (x, d=2) => x == null || !isFinite(x) ? "—" : Number(x).toLocaleString("pt-BR", {minimumFractionDigits:d, maximumFractionDigits:d});
+const day = t => t.slice(0, 10);
+const br = t => day(t).split("-").reverse().join("/");
+const stamp = t => br(t) + ", " + t.slice(11, 16);
+const mean = a => a.length ? a.reduce((s, x) => s + x, 0) / a.length : null;
+const sum = a => a.reduce((s, x) => s + x, 0);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+const lastTs = D.readings[D.readings.length - 1].timestamp;
+const firstDay = day(D.readings[0].timestamp), lastDay = day(lastTs);
+let state = {days:7, device:"all", variable:"temperature_c"};
+
+function startDay(){
+  if (!state.days) return firstDay;
+  const d = new Date(lastDay + "T12:00:00"); d.setDate(d.getDate() - state.days + 1);
+  const iso = d.toISOString().slice(0, 10);
+  return iso < firstDay ? firstDay : iso;
+}
+function token(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+function layout(yTitle, extra={}){
+  const ink = token("--ink"), muted = token("--muted"), grid = token("--grid"), line = token("--line");
+  return Object.assign({
+    margin:{l:48, r:8, t:8, b:36}, paper_bgcolor:"rgba(0,0,0,0)", plot_bgcolor:"rgba(0,0,0,0)",
+    font:{family:'IBM Plex Sans, Segoe UI, sans-serif', size:12, color:muted}, separators:",.",
+    xaxis:{type:"date", tickformat:"%d/%m", gridcolor:grid, linecolor:line, zeroline:false, fixedrange:true},
+    yaxis:{title:{text:yTitle, font:{size:11}}, gridcolor:grid, linecolor:line, zeroline:false, fixedrange:true, tickformat:".1f"},
+    legend:{orientation:"h", x:0, y:1.12, font:{color:ink}}, hovermode:"x unified",
+    hoverlabel:{bgcolor:token("--surface"), bordercolor:line, font:{color:ink, family:'IBM Plex Sans, sans-serif'}}
+  }, extra);
+}
+const CONFIG = {displayModeBar:false, responsive:true};
+
+function render(){
+  const from = startDay(), inside = r => day(r.timestamp) >= from;
+  $("range").textContent = `${br(from)} a ${br(lastDay)}`;
+  const sensors = D.readings.filter(r => inside(r) && r.device_id !== "energy_meter_01" && (state.device === "all" || r.device_id === state.device));
+  const days = D.daily.filter(r => day(r.timestamp) >= from);
+  const complete = days.filter(r => r.coverage_hours >= 23.999);
+  const kwh = sum(days.map(r => r.consumption_kwh));
+  const temps = sensors.map(r => r.temperature_c).filter(x => x != null), hums = sensors.map(r => r.humidity_percent).filter(x => x != null);
+  const [tmin, tmax] = D.limits.temperature_c, [hmin, hmax] = D.limits.humidity_percent;
+  const outT = temps.filter(t => t < tmin || t > tmax).length, outH = hums.filter(h => h < hmin || h > hmax).length;
+
+  const stats = [
+    ["Temperatura média", fmt(mean(temps), 1), "°C", temps.length ? `mín. ${fmt(Math.min(...temps),1)} · máx. ${fmt(Math.max(...temps),1)}` : ""],
+    ["Umidade média", fmt(mean(hums), 1), "%", hums.length ? `${fmt(100 * outH / hums.length, 0)}% das leituras acima de ${hmax}%` : ""],
+    ["Consumo no período", fmt(kwh), "kWh", complete.length ? `${fmt(mean(complete.map(r => r.consumption_kwh)))} kWh por dia completo` : ""],
+    ["Custo no período", "R$ " + fmt(kwh * D.price), "", complete.length ? `≈ R$ ${fmt(mean(complete.map(r => r.consumption_kwh)) * 30 * D.price)} em 30 dias` : ""],
+  ];
+  $("summary").innerHTML = stats.map(([l, v, u, n]) => `<div class="stat"><span class="label">${l}</span><span class="value">${v}${u ? `<small>${u}</small>` : ""}</span><span class="note">${esc(n)}</span></div>`).join("");
+
+  // Ambiente
+  const v = state.variable, meta = VARS[v], [lo, hi] = D.limits[v];
+  const colors = {sensor_01:token("--accent"), sensor_02:token("--s2"), sensor_03:token("--s3")};
+  const traces = Object.keys(colors).filter(id => state.device === "all" || id === state.device).map(id => {
+    const rows = sensors.filter(r => r.device_id === id && r[v] != null);
+    return {x:rows.map(r => r.timestamp), y:rows.map(r => r[v]), name:NAMES[id], type:"scatter", mode:"lines",
+            line:{color:colors[id], width:1.6}, hovertemplate:`%{y:.1f} ${meta.unit}<extra>${NAMES[id]}</extra>`};
+  });
+  const out = v === "temperature_c" ? outT : outH, total = v === "temperature_c" ? temps.length : hums.length;
+  $("env-note").textContent = `Faixa aceitável: ${fmt(lo,0)} a ${fmt(hi,0)} ${meta.unit} (área sombreada). ${fmt(total ? 100 * out / total : 0, 0)}% das leituras do período ficaram fora dela.`;
+  Plotly.react("env-chart", traces, layout(`${meta.label} (${meta.unit})`, {
+    shapes:[{type:"rect", xref:"paper", x0:0, x1:1, y0:lo, y1:hi, fillcolor:token("--band"), line:{width:0}, layer:"below"},
+            {type:"line", xref:"paper", x0:0, x1:1, y0:hi, y1:hi, line:{color:token("--muted"), width:1, dash:"dot"}},
+            {type:"line", xref:"paper", x0:0, x1:1, y0:lo, y1:lo, line:{color:token("--muted"), width:1, dash:"dot"}}],
+    xaxis:Object.assign(layout("").xaxis, {tickformat:"%d/%m"})}), CONFIG);
+
+  // Energia
+  const accent = token("--accent");
+  Plotly.react("energy-chart", [{x:days.map(r => day(r.timestamp)), y:days.map(r => r.consumption_kwh), type:"bar",
+    marker:{color:days.map(r => r.coverage_hours >= 23.999 ? accent : token("--accent-soft")), line:{color:accent, width:days.map(r => r.coverage_hours >= 23.999 ? 0 : 1)}},
+    hovertemplate:"%{y:.2f} kWh<extra></extra>"}], layout("kWh", {yaxis:Object.assign(layout("kWh").yaxis, {tickformat:".2f"}), bargap:.3, hovermode:"closest"}), CONFIG);
+  const peak = complete.reduce((a, r) => !a || r.consumption_kwh > a.consumption_kwh ? r : a, null);
+  $("energy-facts").innerHTML = [
+    ["Dias completos", complete.length, ""],
+    ["Maior consumo", peak ? fmt(peak.consumption_kwh) : "—", peak ? ` kWh em ${br(peak.timestamp)}` : ""],
+    ["Horas medidas", fmt(sum(days.map(r => r.coverage_hours)), 0), " h"],
+  ].map(([l, v, u]) => `<span>${l}: <b>${v}</b>${esc(u)}</span>`).join("");
+
+  renderAlerts(from);
+}
+
+function renderForecast(){
+  const f = D.forecast, s = D.scored;
+  if (!f.length){ $("fc-chart").innerHTML = '<p class="empty">Nenhuma previsão disponível.</p>'; return; }
+  const errors = s.map(r => r.actual - r.prediction), mae = mean(errors.map(Math.abs));
+  $("fc-model").textContent = `Modelo: ${D.model}`;
+  $("fc-facts").innerHTML = [
+    ["Consumo previsto", fmt(sum(f.map(r => r.prediction_kwh))), ` kWh de ${br(f[0].timestamp)} a ${br(f[f.length-1].timestamp)}`],
+    ["Custo previsto", "R$ " + fmt(sum(f.map(r => r.cost_brl))), ""],
+    ["Erro médio", fmt(mae), ` kWh/dia em ${s.length} dias avaliados`],
+  ].map(([l, v, u]) => `<span>${l}: <b>${v}</b>${esc(u)}</span>`).join("");
+  const history = D.daily.filter(r => r.timestamp < f[0].timestamp && r.coverage_hours >= 23.999).slice(-21);
+  const amber = token("--amber"), x = f.map(r => day(r.timestamp));
+  Plotly.react("fc-chart", [
+    {x:history.map(r => day(r.timestamp)), y:history.map(r => r.consumption_kwh), name:"Medido", type:"scatter", mode:"lines+markers",
+     line:{color:token("--accent"), width:2}, marker:{size:5}, hovertemplate:"%{y:.2f} kWh<extra>Medido</extra>"},
+    {x, y:f.map(r => r.upper_kwh), type:"scatter", mode:"lines", line:{width:0}, showlegend:false, hoverinfo:"skip"},
+    {x, y:f.map(r => r.lower_kwh), type:"scatter", mode:"lines", line:{width:0}, fill:"tonexty", fillcolor:token("--amber-soft"), name:"Faixa esperada", hoverinfo:"skip"},
+    {x, y:f.map(r => r.prediction_kwh), name:"Previsto", type:"scatter", mode:"lines+markers", line:{color:amber, width:2, dash:"dash"}, marker:{size:5},
+     hovertemplate:"%{y:.2f} kWh<extra>Previsto</extra>"}
+  ], layout("kWh", {yaxis:Object.assign(layout("kWh").yaxis, {tickformat:".2f", rangemode:"tozero"})}), CONFIG);
+}
+
+function renderAlerts(from){
+  const list = D.alerts.filter(a => day(a.timestamp) >= from).sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+  const crit = list.filter(a => a.level === "CRITICAL").length;
+  $("al-count").textContent = list.length ? `${list.length} no período · ${crit} crítico${crit === 1 ? "" : "s"}` : "";
+  $("alerts").innerHTML = list.length ? list.slice(0, 12).map(a => {
+    const unit = /UMIDADE/.test(a.type) ? "%" : /CONSUMO/.test(a.type) ? "W" : "°C";
+    return `<li><span class="tag ${a.level === "CRITICAL" ? "crit" : "warn"}">${a.level === "CRITICAL" ? "Crítico" : "Atenção"}</span>
+      <span class="what">${esc(TYPES[a.type] || a.type)} · ${esc(NAMES[a.device_id] || a.device_id)} · <span class="num">${fmt(a.observed, 1)} ${unit}</span> <span class="muted">(limite ${fmt(a.threshold, 0)} ${unit})</span></span>
+      <span class="when">${stamp(a.timestamp)}</span></li>`;
+  }).join("") + (list.length > 12 ? `<li class="muted small" style="display:block">Mostrando os 12 mais recentes de ${list.length}.</li>` : "")
+  : '<li class="empty" style="display:block">Nenhum alerta no período.</li>';
+}
+
+function group(id, attr, key){
+  $(id).addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    $(id).querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", String(x === b)));
+    state[key] = key === "days" ? Number(b.dataset[attr]) : b.dataset[attr]; render();
+  });
+}
+group("period", "days", "days"); group("variable", "var", "variable");
+$("device").addEventListener("change", e => { state.device = e.target.value; render(); });
+
+$("last").textContent = stamp(lastTs);
+$("price").textContent = `R$ ${fmt(D.price, 2)}/kWh`;
+$("generated").textContent = `Dados atualizados em ${stamp(D.generatedAt)}.`;
+function all(){ render(); renderForecast(); }
+all();
+window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", all);
+new MutationObserver(all).observe(document.documentElement, {attributes:true, attributeFilter:["data-theme"]});
+</script>

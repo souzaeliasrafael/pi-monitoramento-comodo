@@ -1,0 +1,2 @@
+"""Conexão e persistência SQLite."""
+

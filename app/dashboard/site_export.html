@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Monitoramento do cômodo</title>
+<style>
+:root{--ink:#183442;--muted:#687e88;--accent:#147d92;--line:#dce6eb;--panel:#f2f7fa}*{box-sizing:border-box}body{margin:0;font:15px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--ink);background:#fff}button,input,select{font:inherit}button{cursor:pointer}aside{position:fixed;inset:0 auto 0 0;width:250px;background:var(--panel);padding:32px 22px;overflow:auto;border-right:1px solid var(--line)}main{margin-left:250px;padding:42px 4vw 64px;max-width:1700px}h1{font-size:38px;letter-spacing:-1px;line-height:1.2;margin:0 0 18px}h2{font-size:24px;margin:28px 0 14px}h3{font-size:18px}p{margin:10px 0}.muted,small{color:var(--muted)}.brand{color:var(--accent);font-weight:700;letter-spacing:1px;font-size:12px;margin-bottom:20px}.nav{width:100%;text-align:left;border:0;border-radius:8px;background:none;padding:11px 13px;color:var(--ink);margin-bottom:6px}.nav.active{background:#dcecf0;color:#07576a;font-weight:650}label{display:block;margin:16px 0 5px;font-size:14px}input,select{border:1px solid #bdcdd4;background:#fff;border-radius:8px;padding:10px 11px;width:100%;color:var(--ink)}input:focus,select:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:3px}.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin:22px 0}.grid.two{grid-template-columns:repeat(2,minmax(0,1fr))}.card{padding:18px 20px;border:1px solid var(--line);border-radius:10px;min-width:0}.card .label{font-size:14px}.value{font-size:30px;line-height:1.3;letter-spacing:-.6px;margin-top:6px}.tabs{display:flex;gap:22px;border-bottom:1px solid var(--line);margin:26px 0 18px}.tab{border:0;background:none;padding:13px 0;color:var(--muted)}.tab.active{color:var(--accent);border-bottom:3px solid var(--accent)}.chart{height:360px;width:100%}.table-wrap{overflow:auto;max-height:550px;border:1px solid var(--line);border-radius:8px;margin:16px 0}table{border-collapse:collapse;width:100%;font-size:13px;white-space:nowrap}th,td{padding:11px 13px;text-align:left;border-bottom:1px solid var(--line)}th{background:var(--panel);position:sticky;top:0;z-index:1}tr:last-child td{border:0}.help{display:inline-block;position:relative;margin-left:7px;vertical-align:middle}.help>button{border:1px solid #7b929a;color:#617d88;border-radius:50%;width:18px;height:18px;line-height:16px;padding:0;background:#fff;font-size:12px;font-weight:700}.bubble{display:none;position:absolute;bottom:27px;left:0;width:330px;max-width:75vw;padding:13px 16px;background:#fff;border:1px solid var(--line);border-radius:8px;box-shadow:0 5px 22px #18344226;color:var(--ink);font-size:13px;font-weight:400;line-height:1.55;z-index:100}.help:hover .bubble,.help:focus-within .bubble{display:block}.button{border:1px solid var(--accent);background:var(--accent);color:white;border-radius:8px;padding:10px 17px;margin:16px 0}.button.secondary{background:white;color:var(--accent)}.form{max-width:800px;border:1px solid var(--line);padding:8px 24px 20px;border-radius:12px}.fields{display:grid;grid-template-columns:1fr 1fr;gap:20px}.message{padding:12px 16px;border-radius:8px;background:#e7f4ef;color:#245b45}.error{background:#fff0ed;color:#913820}footer{border-top:1px solid var(--line);padding-top:20px;margin-top:42px;font-size:12px;color:var(--muted)}[hidden]{display:none!important}details{margin:24px 0}summary{cursor:pointer;font-weight:600}#filter-error{color:#9a3423}.tag{display:inline-block;background:#e4f1f4;border-radius:20px;padding:4px 12px;color:#086175;font-size:12px}@media(max-width:900px){aside{position:static;width:auto;padding:20px}main{margin:0;padding:28px 20px}.nav{display:inline-block;width:auto;margin-right:8px}#filters{display:grid;grid-template-columns:1fr 1fr;gap:0 16px}#filters h3{grid-column:1/-1}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}h1{font-size:32px}}@media(max-width:500px){.grid,.grid.two,.fields{grid-template-columns:1fr}.value{font-size:28px}.tabs{gap:16px;font-size:13px}.bubble{left:auto;right:-30px}.form{padding:5px 15px 20px}}@media print{aside,.button,form,.tabs{display:none}main{margin:0;padding:12px}.chart{break-inside:avoid}.table-wrap{max-height:none}}
+</style>
+<script>__PLOTLY__</script>
+</head>
+<body>
+<aside>
+ <div class="brand">MONITORAMENTO DO CÔMODO</div>
+ <nav aria-label="Telas"><button class="nav active" data-page="monitor">Monitoramento</button><button class="nav" data-page="equipment">Equipamentos</button></nav>
+ <div id="filters"><h3>Filtros do histórico</h3>
+ <div><label for="start">Data inicial</label><input id="start" type="date" required></div>
+ <div><label for="end">Data final</label><input id="end" type="date" required></div>
+ <div><label for="device">Dispositivo</label><select id="device"><option value="Todos">Todos</option><option value="sensor_01">Sensor 1</option><option value="sensor_02">Sensor 2</option><option value="sensor_03">Sensor 3</option><option value="energy_meter_01">Disjuntor inteligente</option></select></div>
+ <div><label for="variable">Variável</label><select id="variable"><option value="temperature_c">Temperatura</option><option value="humidity_percent">Umidade</option><option value="power_w">Potência</option></select></div>
+ </div>
+ <p id="filter-error" role="alert"></p>
+ <p class="muted"><small>Cópia HTML • funciona sem internet</small></p>
+</aside>
+<main>
+ <h1>Monitoramento do cômodo</h1>
+ <section id="monitor-page">
+ <p class="muted" id="latest"></p><p class="muted" id="period"></p>
+ <div class="grid" id="main-cards"></div>
+ <p class="muted" id="coverage"></p><p class="muted" id="lighting"></p>
+ <p class="muted">Referência tarifária: Enel São Paulo • Residencial convencional • Vigência desde 04/07/2026.</p>
+ <div class="tabs" role="tablist"><button role="tab" class="tab active" data-tab="history" aria-selected="true">Ambiente e histórico</button><button role="tab" class="tab" data-tab="energy" aria-selected="false">Energia</button><button role="tab" class="tab" data-tab="alerts" aria-selected="false">Alertas</button></div>
+ <section id="history-tab" role="tabpanel"><div id="history-chart" class="chart"></div><h3>Estatísticas do período filtrado</h3><div id="environment-table"></div></section>
+ <section id="energy-tab" role="tabpanel" hidden><div id="energy-cards" class="grid"></div><p class="muted">Projeção: média dos dias completos do filtro × dias do mês da data final × tarifa.</p><div id="energy-chart" class="chart"></div><div id="power-chart" class="chart"></div></section>
+ <section id="alerts-tab" role="tabpanel" hidden><h3>Ocorrências no período selecionado</h3><div id="alerts-table"></div></section>
+ <h2>Previsão energética</h2><p id="model-label"></p><p class="muted">Previsão atual baseada no histórico completo, independente do filtro de consulta.</p><div id="forecast-cards" class="grid two"></div>
+ <div id="forecast-chart" class="chart"></div><p id="range-help"></p><div id="forecast-table"></div>
+ <details><summary>Comparação inicial dos modelos</summary><div id="model-table"></div><p class="muted">Seleção pelo erro de validação; teste temporal separado. O ciclo de aprendizado contínuo usa Random Forest.</p></details>
+ <h2>Aprendizado com novas leituras <span class="help"><button type="button" aria-label="Como funciona o aprendizado" aria-describedby="learning-help">?</button><span class="bubble" role="tooltip" id="learning-help">No sistema Python, Random Forest é treinado novamente a cada novo dia completo, com até 14 exemplos diários recentes. Previsões anteriores são preservadas e avaliadas após a chegada dos valores observados. O erro pode aumentar ou diminuir.</span></span></h2>
+ <p id="learning-summary"></p><div id="learning-chart" class="chart"></div><div id="learning-table"></div>
+ <button class="button secondary" id="print">Imprimir / salvar em PDF</button>
+ </section>
+ <section id="equipment-page" hidden>
+ <h2>Equipamentos do cômodo</h2><p id="equipment-intro"></p>
+ <p class="muted">Nesta cópia HTML, os novos cadastros ficam apenas neste navegador. Eles não alteram as leituras exportadas nem são enviados ao sistema Python.</p>
+ <form id="equipment-form" class="form">
+ <label for="equipment-name">Nome do equipamento</label><input id="equipment-name" maxlength="100" placeholder="Ex.: luminária da mesa" required>
+ <div class="fields"><div><label for="quantity">Quantidade</label><input id="quantity" type="number" min="1" max="1000" step="1" value="1" required></div><div><label for="watts">Potência de cada unidade (W)</label><input id="watts" inputmode="decimal" value="15,00" required></div></div>
+ <button class="button" type="submit">Adicionar equipamento</button>
+ </form><p id="equipment-message" role="status" hidden></p><div class="grid two" id="equipment-total"></div><div id="equipment-table"></div>
+ <button class="button secondary" id="download-equipment">Baixar cadastros em JSON</button>
+ </section>
+ <footer id="export-note"></footer>
+</main>
+<script id="site-data" type="application/json">__DATA__</script>
+<script>
+"use strict";
+const D=JSON.parse(document.getElementById('site-data').textContent), $=id=>document.getElementById(id);
+const names={sensor_01:'Sensor 1',sensor_02:'Sensor 2',sensor_03:'Sensor 3',energy_meter_01:'Disjuntor inteligente',Todos:'Todos'};
+const labels={temperature_c:'Temperatura (°C)',humidity_percent:'Umidade (%)',power_w:'Potência (W)'};
+const n=x=>x===null||x===undefined||!Number.isFinite(Number(x))?'—':Number(x).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const money=x=>x===null?'Sem cobertura suficiente':'R$ '+n(x);
+const esc=x=>String(x??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const day=t=>t.slice(0,10), br=t=>day(t).split('-').reverse().join('/'), stamp=t=>br(t)+' '+t.slice(11,16);
+const sum=a=>a.reduce((s,x)=>s+x,0), mean=a=>a.length?sum(a)/a.length:null;
+let helpIndex=0;
+function help(text){const id='help-'+(++helpIndex);return `<span class="help"><button type="button" aria-label="Mais informações" aria-describedby="${id}">?</button><span id="${id}" class="bubble" role="tooltip">${esc(text)}</span></span>`;}
+function cards(id,items){$(id).innerHTML=items.map(([label,value,tip])=>`<article class="card"><div class="label">${esc(label)}${tip?help(tip):''}</div><div class="value">${esc(value)}</div></article>`).join('');}
+function table(id,headers,rows){$(id).innerHTML=rows.length?`<div class="table-wrap"><table><thead><tr>${headers.map(h=>'<th>'+esc(h)+'</th>').join('')}</tr></thead><tbody>${rows.map(r=>'<tr>'+r.map(c=>'<td>'+esc(c)+'</td>').join('')+'</tr>').join('')}</tbody></table></div>`:'<p class="muted">Nenhum registro no período.</p>';}
+const config={displayModeBar:false,responsive:true};
+function chart(id,traces,title,unit){Plotly.react(id,traces,{title:{text:title,font:{size:16}},margin:{l:55,r:20,t:55,b:55},font:{family:'system-ui',color:'#183442'},paper_bgcolor:'#fff',plot_bgcolor:'#fff',separators:',.',colorway:['#147d92','#eb9245','#7467a4'],xaxis:{tickformat:'%d/%m',gridcolor:'#edf2f5'},yaxis:{title:{text:unit},tickformat:'.2f',gridcolor:'#edf2f5'},legend:{orientation:'h',y:1.12},hovermode:'closest'},config);}
+function line(rows,key,name){return{x:rows.map(r=>r.timestamp),y:rows.map(r=>r[key]),name,mode:'lines',type:'scatter',hovertemplate:'%{x|%d/%m/%Y %H:%M}: %{y:.2f}<extra>%{fullData.name}</extra>'};}
+const first=day(D.readings[0].timestamp),last=day(D.readings.at(-1).timestamp),lastDate=new Date(last+'T12:00:00');
+lastDate.setDate(lastDate.getDate()-6);
+const isoDate=t=>[t.getFullYear(),String(t.getMonth()+1).padStart(2,'0'),String(t.getDate()).padStart(2,'0')].join('-');
+$('start').min=$('end').min=first;$('start').max=$('end').max=last;$('start').value=isoDate(lastDate)>first?isoDate(lastDate):first;$('end').value=last;
+$('latest').textContent=`Última leitura: ${stamp(D.readings.at(-1).timestamp)} • Horário de Brasília • ${D.readings.length.toLocaleString('pt-BR')} registros`;
+$('lighting').textContent=`Iluminação inicial: ${D.lampCount} lâmpadas LED de ${n(D.lampPower)} W, total de ${n(D.lampCount*D.lampPower)} W. Uso dinâmico do circuito, em média de 8 a 10 horas nos dias úteis, aos sábados até as 12h e sem consumo aos domingos. Custos sem impostos, bandeiras, iluminação pública ou mínimo residencial.`;
+$('export-note').textContent=`Arquivo gerado em ${stamp(D.generatedAt)} • Dados e previsões incorporados. Coleta e treinamento automático disponíveis no sistema Python. Nenhuma conexão externa é necessária para consultar este arquivo.`;
+let selectedTab='history';
+function render(){
+ const start=$('start').value,end=$('end').value,device=$('device').value,key=$('variable').value;
+ if(!start||!end||start>end){$('filter-error').textContent='Escolha datas válidas, com início anterior ou igual ao fim.';return;}
+ $('filter-error').textContent='';
+ const inside=r=>day(r.timestamp)>=start&&day(r.timestamp)<=end;
+ const period=D.readings.filter(inside),selected=period.filter(r=>device==='Todos'||r.device_id===device),days=D.daily.filter(inside),complete=days.filter(r=>r.coverage_hours>=23.999);
+ const alerts=D.alerts.filter(inside).filter(r=>device==='Todos'||r.device_id===device);
+ const values=key=>selected.map(r=>r[key]).filter(x=>x!==null),coverage=sum(days.map(r=>r.coverage_hours)),consumption=coverage?sum(days.map(r=>r.consumption_kwh)):null;
+ const power=mean(period.map(r=>r.power_w).filter(x=>x!==null));
+ $('period').textContent=`Período selecionado: ${br(start)} a ${br(end)}. Ambiente e alertas: ${names[device]}. Energia: disjuntor inteligente do circuito.`;
+ cards('main-cards',[
+ ['Temperatura média do período',n(mean(values('temperature_c')))+' °C'],['Umidade média do período',n(mean(values('humidity_percent')))+' %'],
+ ['Consumo do período',n(consumption)+' kWh'],['Custo do período',money(consumption===null?null:consumption*D.price)],
+ ['Potência média do período',n(power)+' W',`O disjuntor acompanha acionamentos parciais e independentes das lâmpadas, com pequenas variações de potência e períodos sem carga. Este indicador é a média das leituras.`],['Alertas no período',String(alerts.length)]]);
+ $('coverage').textContent=`Cobertura do período: ${n(coverage)} horas. Tarifa: R$ ${n(D.price)}/kWh (arredondada apenas na exibição).`;
+ if(selectedTab==='history'){
+  const traces=Object.keys(names).filter(id=>id!=='Todos').map(id=>{const rows=selected.filter(r=>r.device_id===id&&r[key]!==null);return line(rows,key,names[id]);}).filter(t=>t.x.length);
+  chart('history-chart',traces,'Histórico filtrado e comparação entre sensores',labels[key]);
+ }
+ const stats=[];
+ for(const id of ['sensor_01','sensor_02','sensor_03'])for(const key of ['temperature_c','humidity_percent']){
+  const a=selected.filter(r=>r.device_id===id&&r[key]!==null).map(r=>r[key]).sort((a,b)=>a-b);if(!a.length)continue;
+  const m=mean(a),mid=Math.floor(a.length/2),median=a.length%2?a[mid]:(a[mid-1]+a[mid])/2,std=a.length>1?Math.sqrt(sum(a.map(v=>(v-m)**2))/(a.length-1)):null;
+  stats.push([names[id],labels[key],n(m),n(a[0]),n(a.at(-1)),n(median),n(std)]);
+ }
+ table('environment-table',['Dispositivo','Indicador','Média','Mínima','Máxima','Mediana','Desvio padrão'],stats);
+ const avg=mean(complete.map(r=>r.consumption_kwh)),[year,month]=end.split('-').map(Number),monthDays=new Date(year,month,0).getDate();
+ cards('energy-cards',[['Consumo médio por dia completo',n(avg)+' kWh'],['Custo médio por dia completo',money(avg===null?null:avg*D.price)],[`Projeção mensal • ${String(month).padStart(2,'0')}/${year}`,money(avg===null?null:avg*monthDays*D.price)]]);
+ if(selectedTab==='energy'){
+  chart('energy-chart',[{x:days.map(r=>r.timestamp),y:days.map(r=>r.consumption_kwh),type:'bar',name:'Consumo',marker:{color:'#147d92'},hovertemplate:'%{x|%d/%m/%Y}: %{y:.2f} kWh<extra></extra>'}],'Consumo no período','Consumo (kWh)');
+  chart('power-chart',[line(period.filter(r=>r.power_w!==null),'power_w','Potência')],'Potência no período','Potência (W)');
+ }
+ table('alerts-table',['Data e hora','Dispositivo','Tipo','Nível','Valor observado','Limite'],alerts.map(r=>[stamp(r.timestamp),names[r.device_id]||r.device_id,r.type.toLowerCase().replaceAll('_',' '),({WARNING:'Atenção',CRITICAL:'Crítico',INFO:'Informação'})[r.level]||r.level,n(r.observed),n(r.threshold)]));
+}
+for(const id of ['start','end','device','variable'])$(id).addEventListener('change',render);
+document.querySelectorAll('[data-tab]').forEach(b=>b.addEventListener('click',()=>{selectedTab=b.dataset.tab;document.querySelectorAll('[data-tab]').forEach(t=>{t.classList.toggle('active',t===b);t.setAttribute('aria-selected',String(t===b));});for(const id of ['history','energy','alerts'])$(id+'-tab').hidden=id!==selectedTab;render();}));
+function forecast(){
+ const f=D.forecast,s=D.scored,errors=s.map(r=>r.actual-r.prediction),mae=mean(errors.map(Math.abs)),rmse=errors.length?Math.sqrt(mean(errors.map(e=>e*e))):null;
+ $('model-label').textContent=`Modelo: ${D.model} • Período: ${br(f[0].timestamp)} a ${br(f.at(-1).timestamp)}`;
+ const errorHelp='O erro absoluto representa o tamanho médio do erro diário. O erro quadrático dá mais peso aos erros grandes. Menores valores são melhores; resultados das previsões anteriores comparadas aos novos dias observados.';
+ cards('forecast-cards',[['Consumo previsto • 7 dias',n(sum(f.map(r=>r.prediction_kwh)))+' kWh'],['Custo previsto • 7 dias',money(sum(f.map(r=>r.cost_brl)))],['Erro absoluto médio',n(mae)+' kWh/dia',errorHelp],['Erro quadrático médio (raiz)',n(rmse)+' kWh/dia',errorHelp]]);
+ const history=D.daily.filter(r=>r.timestamp<f[0].timestamp&&r.coverage_hours>=23.999).slice(-28);
+ chart('forecast-chart',[line(history,'consumption_kwh','Histórico'),{...line(f,'upper_kwh',''),line:{width:0},showlegend:false},{...line(f,'lower_kwh','Faixa de erros observados'),line:{width:0},fill:'tonexty',fillcolor:'rgba(20,125,146,.14)'},{...line(f,'prediction_kwh','Previsão'),mode:'lines+markers',line:{color:'#147d92',dash:'dash'}}],'Consumo diário e previsão','Consumo diário (kWh)');
+ $('range-help').innerHTML='Sobre a faixa de previsão'+help('Faixa descritiva calculada com o percentil 90 dos erros absolutos dos últimos 14 dias avaliados, quando há pelo menos três. O sistema Python atualiza a faixa após a chegada das leituras; esta exportação preserva a versão atual.');
+ table('forecast-table',['Dia','Consumo previsto (kWh)','Limite inferior (kWh)','Limite superior (kWh)','Custo (R$)'],f.map(r=>[br(r.timestamp),n(r.prediction_kwh),n(r.lower_kwh),n(r.upper_kwh),n(r.cost_brl)]));
+ table('model-table',['Modelo','Erro absoluto na validação','Erro quadrático na validação','Erro absoluto no teste','Erro quadrático no teste','Erro percentual no teste (%)'],D.models.map(r=>[r.name,n(r.validation.mae),n(r.validation.rmse),n(r.test.mae),n(r.test.rmse),n(r.test.mape_percent)]));
+ $('learning-summary').textContent=`Ciclos de treinamento: ${D.cycles} • Dias avaliados: ${s.length} • Erro absoluto médio: ${n(mae)} kWh/dia`;
+ chart('learning-chart',[{...line(s.map(r=>({...r,timestamp:r.target})),'prediction','Previsão registrada'),mode:'lines+markers'},{...line(s.map(r=>({...r,timestamp:r.target})),'actual','Consumo observado'),mode:'lines+markers'}],'Previsões anteriores e novos valores observados','Consumo diário (kWh)');
+ table('learning-table',['Emissão','Treinamento até','Dia previsto','Previsto (kWh)','Observado (kWh)','Erro (kWh)','Erro absoluto (kWh)'],s.map(r=>[stamp(r.issued_at),br(r.training_end),br(r.target),n(r.prediction),n(r.actual),n(r.actual-r.prediction),n(Math.abs(r.actual-r.prediction))]));
+}
+const storageKey='monitoramento-comodo-equipamentos-v1';let localEquipment=[];
+try{const stored=JSON.parse(localStorage.getItem(storageKey)||'[]');if(Array.isArray(stored))localEquipment=stored.filter(r=>typeof r.name==='string'&&Number.isInteger(r.quantity)&&r.quantity>0&&Number.isFinite(r.power_w)&&r.power_w>0&&typeof r.active_from==='string');}catch{}
+const clock=h=>{const minutes=Math.round(h*60)%1440;return String(Math.floor(minutes/60)).padStart(2,'0')+':'+String(minutes%60).padStart(2,'0');};
+function equipment(){
+ $('equipment-intro').textContent=`Já incluídas: ${D.lampCount} lâmpadas LED de ${n(D.lampPower)} W. Os cadastros abaixo são adicionais.`;
+ const all=[...D.equipment,...localEquipment],total=D.lampCount*D.lampPower+sum(all.map(r=>r.quantity*r.power_w));
+ cards('equipment-total',[['Potência total se todos estiverem ligados',n(total)+' W']]);
+ const rows=[['Lâmpadas LED já incluídas',D.lampCount,n(D.lampPower),'Uso dinâmico','Histórico inicial']];
+ for(const r of all)rows.push([r.name,r.quantity,n(r.power_w),'Uso dinâmico',r.local?'Neste navegador':stamp(r.active_from)]);
+ table('equipment-table',['Equipamento','Quantidade','Potência por unidade (W)','Perfil','Origem'],rows);
+}
+document.querySelectorAll('[data-page]').forEach(b=>b.addEventListener('click',()=>{const monitoring=b.dataset.page==='monitor';$('monitor-page').hidden=!monitoring;$('equipment-page').hidden=monitoring;$('filters').hidden=!monitoring;document.querySelectorAll('[data-page]').forEach(t=>t.classList.toggle('active',t===b));if(monitoring){render();forecast();}else equipment();window.scrollTo(0,0);}));
+$('equipment-form').addEventListener('submit',e=>{
+ e.preventDefault();const name=$('equipment-name').value.trim(),quantity=Number($('quantity').value),text=$('watts').value.trim(),power=Number(text.includes(',')?text.replaceAll('.','').replace(',','.'):text);
+ let error='';if(!name||!Number.isInteger(quantity)||quantity<1||quantity>1000||!Number.isFinite(power)||power<=0||power>100000)error='Informe nome, quantidade e potência válidos.';
+ if([...D.equipment,...localEquipment].some(r=>r.name.toLocaleLowerCase('pt-BR')===name.toLocaleLowerCase('pt-BR')))error='Já existe um equipamento com esse nome.';
+ const message=$('equipment-message');message.hidden=false;message.className='message'+(error?' error':'');
+ if(error){message.textContent=error;return;}
+ const now=new Date(),created=isoDate(now)+'T'+clock(now.getHours()+now.getMinutes()/60)+':00';
+ localEquipment.push({name,quantity,power_w:power,active_from:created,local:true});
+ try{localStorage.setItem(storageKey,JSON.stringify(localEquipment));message.textContent='Equipamento salvo neste navegador. O histórico exportado permanece preservado.';}catch{message.textContent='Equipamento adicionado nesta sessão. O navegador bloqueou o armazenamento; baixe os cadastros para guardá-los.';}
+ equipment();$('equipment-form').reset();
+});
+$('download-equipment').addEventListener('click',()=>{const url=URL.createObjectURL(new Blob([JSON.stringify([...D.equipment,...localEquipment],null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download='equipamentos.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);});
+$('print').addEventListener('click',()=>window.print());render();forecast();equipment();
+</script>
+</body></html>
